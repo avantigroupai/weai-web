@@ -1,0 +1,13 @@
+{
+  "product": "WeAI",
+  "version": "0.1.9",
+  "build": 22,
+  "date": "2026-08-07",
+  "minOS": "14.0",
+  "arch": "arm64",
+  "dmg": "downloads/WeAI.dmg",
+  "versionedDmg": "downloads/WeAI-0.1.9.dmg",
+  "sha256": "f5110a7e6743a0224a3d8267d86f93ed553cd03d42bf664be1b80760726223df",
+  "sizeMB": 23.0,
+  "notarized": false
+}

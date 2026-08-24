@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WeAI — Privacy by proof, not by promise</title>
+<meta name="description" content="WeAI is a native macOS client for private AI. Every connection verifies a hardware attestation before any plaintext leaves your Mac — the guarantee is cryptographic, not a privacy policy." />
+<meta property="og:title" content="WeAI — Privacy by proof, not by promise" />
+<meta property="og:description" content="Verifiable private AI. Hardware attestation is checked before a single byte of plaintext leaves your Mac. Local models, a post-quantum friend mesh, and attested cloud enclaves." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://avantigroupai.github.io/weai-web/" />
+<link rel="canonical" href="https://avantigroupai.github.io/weai-web/" />
+<meta name="theme-color" content="#09090c" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l10 5v8c0 6.5-4.3 10.9-10 13C10.3 26.9 6 22.5 6 16V8l10-5z' fill='none' stroke='%23f4f4f2' stroke-width='2'/%3E%3Cpath d='M11.5 15.5l3 3 6-6' fill='none' stroke='%23f4f4f2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============ tokens ============ */
+:root{
+  --bg:#09090c;
+  --bg2:#0d0d12;
+  --surface:rgba(255,255,255,.028);
+  --surface2:rgba(255,255,255,.055);
+  --stroke:rgba(255,255,255,.09);
+  --stroke2:rgba(255,255,255,.2);
+  --text:#f4f4f1;
+  --text2:rgba(244,244,241,.64);
+  --text3:rgba(244,244,241,.38);
+  --ember:#f97316;
+  --ember-hi:#fb8c33;
+  --ember-dim:rgba(249,115,22,.32);
+  --ember-soft:rgba(249,115,22,.10);
+  --matrix:#00ff41;
+  --matrix-dim:rgba(0,255,65,.34);
+  --matrix-soft:rgba(0,255,65,.05);
+  --inkmask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' seed='7'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1.7 1.7 1.7 0 -1.05'/%3E%3C/filter%3E%3Crect width='130' height='130' filter='url(%23n)'/%3E%3C/svg%3E");
+  --sans:"Space Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --maxw:1160px;
+  --pad:clamp(20px,4vw,32px);
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+/* film grain + faint blueprint grid — the dossier texture */
+body::before{
+  content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+  background-size:72px 72px;
+  mask-image:radial-gradient(900px 640px at 70% -5%,#000 0%,transparent 75%);
+  -webkit-mask-image:radial-gradient(900px 640px at 70% -5%,#000 0%,transparent 75%);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background:
+    radial-gradient(760px 520px at 82% -10%, rgba(249,115,22,.10), transparent 62%),
+    radial-gradient(680px 560px at -8% 30%, rgba(249,115,22,.05), transparent 60%);
+}
+a{color:inherit;text-decoration:none}
+::selection{background:rgba(249,115,22,.35)}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 var(--pad)}
+.mono{font-family:var(--mono)}
+.skip{position:absolute;left:-9999px;top:0;background:var(--ember);color:#0a0a0a;
+  padding:10px 16px;font-weight:600;z-index:200;border-radius:0 0 8px 0}
+.skip:focus{left:0}
+:focus-visible{outline:2px solid var(--ember);outline-offset:3px;border-radius:2px}
+
+/* ============ nav ============ */
+header.nav{
+  position:sticky;top:0;z-index:90;
+  background:rgba(9,9,12,.78);backdrop-filter:blur(16px) saturate(140%);
+  -webkit-backdrop-filter:blur(16px) saturate(140%);
+  border-bottom:1px solid var(--stroke);
+}
+.nav-in{display:flex;align-items:center;gap:22px;height:64px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:600;letter-spacing:.1px}
+.brand svg{color:var(--text)}
+.brand .name{font-size:18px;letter-spacing:-.2px}
+.brand .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--text3);
+  border-left:1px solid var(--stroke);padding-left:12px;text-transform:uppercase}
+nav.links{margin-left:auto;display:flex;align-items:center;gap:2px}
+nav.links a{font-size:13.5px;color:var(--text2);padding:8px 12px;border-radius:8px;font-weight:500;transition:color .15s,background .15s}
+nav.links a:hover{color:var(--text);background:var(--surface2)}
+.btn{
+  display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:14.5px;
+  padding:11px 20px;border-radius:10px;border:1px solid transparent;cursor:pointer;
+  transition:transform .15s,background .15s,border-color .15s,color .15s;
+  font-family:var(--sans);
+}
+.btn:active{transform:translateY(1px)}
+.btn-ember{background:var(--ember);color:#140b04;border-color:var(--ember)}
+.btn-ember:hover{background:var(--ember-hi)}
+.btn-ghost{border-color:var(--stroke2);color:var(--text)}
+.btn-ghost:hover{border-color:var(--text3);background:var(--surface)}
+.btn-nav{padding:8px 15px;font-size:13.5px;margin-left:8px}
+.btn svg{flex:none}
+@media(max-width:960px){nav.links a:not(.btn){display:none}.brand .tag{display:none}}
+
+/* ============ hero ============ */
+.hero{padding:clamp(64px,9vh,110px) 0 clamp(48px,7vh,84px);position:relative}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(32px,5vw,72px);align-items:center}
+.eyebrow{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--ember);display:flex;align-items:center;gap:12px;margin-bottom:26px;font-weight:500;
+}
+.eyebrow::before{content:"";width:26px;height:1px;background:var(--ember-dim)}
+h1{
+  font-size:clamp(42px,5.6vw,76px);line-height:.98;letter-spacing:-.035em;
+  font-weight:700;margin-bottom:26px;
+}
+h1 .dim{color:var(--text3)}
+h1 .ember{color:var(--ember)}
+.lede{font-size:clamp(16.5px,1.5vw,19px);color:var(--text2);max-width:34em;line-height:1.65}
+.lede strong{color:var(--text);font-weight:600}
+.cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:36px;align-items:center}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:30px}
+.chip{
+  font-family:var(--mono);font-size:11.5px;color:var(--text2);letter-spacing:.02em;
+  padding:6px 12px;border:1px solid var(--stroke);border-radius:999px;background:var(--surface);
+  display:inline-flex;align-items:center;gap:7px;
+}
+.chip svg{color:var(--text3)}
+
+/* ---- attestation terminal (the anchor) ---- */
+.term{
+  position:relative;border:1px solid var(--stroke2);border-radius:14px;overflow:hidden;
+  background:linear-gradient(180deg,#101016,#0b0b10 60%);
+  box-shadow:0 30px 90px -30px rgba(0,0,0,.9),0 0 0 1px rgba(0,0,0,.4),
+    0 -1px 0 rgba(255,255,255,.06) inset;
+}
+.term-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--stroke)}
+.term-bar .dots{display:flex;gap:6px}
+.term-bar .dots i{width:10px;height:10px;border-radius:50%;border:1px solid var(--stroke2);display:block}
+.term-bar .title{font-family:var(--mono);font-size:11.5px;color:var(--text3);letter-spacing:.08em;margin-left:6px}
+.term-bar .live{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--ember);
+  display:flex;align-items:center;gap:7px}
+.term-bar .live b{width:6px;height:6px;border-radius:50%;background:var(--ember);display:block}
+@media(prefers-reduced-motion:no-preference){.term-bar .live b{animation:pulse 1.6s infinite}}
+.term-bar .live.sealed{color:var(--matrix)}
+.term-bar .live.sealed b{background:var(--matrix);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.term-body{padding:22px 22px 26px;font-family:var(--mono);font-size:12.8px;line-height:2.05;color:var(--text2);min-height:308px}
+.term-body .ln{display:flex;gap:0;white-space:pre-wrap;word-break:break-word}
+.term-body .ln.row{gap:10px;align-items:baseline;white-space:nowrap}
+.term-body .ln.row .lbl{flex:none}
+.term-body .ln.row .leader{flex:1;min-width:14px;border-bottom:1px dotted rgba(255,255,255,.22);transform:translateY(-5px)}
+.term-body .ln.row .st{flex:none}
+.term-body .p{color:var(--ember);margin-right:9px}
+.term-body .cmd{color:var(--text)}
+.term-body .ok{color:var(--matrix);font-weight:500}
+.term-body .note{color:var(--text3)}
+.term-body .rule{border-top:1px dashed var(--stroke2);margin:10px 0 8px}
+.caret{display:inline-block;width:7px;height:15px;background:var(--ember);vertical-align:-2px;margin-left:2px}
+@media(prefers-reduced-motion:no-preference){.caret{animation:blink 1s steps(1) infinite}}
+@keyframes blink{50%{opacity:0}}
+.stamp{
+  display:inline-flex;align-items:center;gap:9px;margin-top:14px;position:relative;
+  font-family:var(--mono);font-size:12px;letter-spacing:.3em;font-weight:600;color:var(--matrix);
+  border:1.5px solid var(--matrix);border-radius:6px;padding:10px 18px 10px 16px;
+  transform:rotate(-2.2deg);
+  background:radial-gradient(130% 170% at 28% 18%, rgba(0,255,65,.17), rgba(0,255,65,.04) 55%, rgba(0,255,65,.11));
+  filter:url(#stamp-rough) drop-shadow(0 0 16px rgba(0,255,65,.16));
+  -webkit-mask-image:var(--inkmask);mask-image:var(--inkmask);
+  -webkit-mask-size:130px 130px;mask-size:130px 130px;
+}
+.stamp::after{ /* inner ring of the rubber stamp */
+  content:"";position:absolute;inset:3px;border:1px solid currentColor;border-radius:4px;
+  opacity:.6;pointer-events:none;
+}
+.stamp::before{ /* ink shock ring — only visible during the press keyframes */
+  content:"";position:absolute;inset:-5px;border:1.5px solid currentColor;border-radius:9px;
+  opacity:0;pointer-events:none;
+}
+button.stamp{appearance:none;-webkit-appearance:none;cursor:pointer;transition:transform .15s}
+button.stamp:hover{transform:rotate(-2.2deg) scale(1.05)}
+button.stamp:active{transform:rotate(-2.2deg) scale(.98)}
+
+/* ---- attestation dossier lightbox ---- */
+dialog.lb{
+  border:1px solid var(--stroke2);border-radius:18px;background:#0d0d12;color:var(--text);
+  padding:0;max-width:680px;width:calc(100% - 40px);
+  margin:auto; /* the global *{margin:0} would otherwise defeat native modal centering */
+  box-shadow:0 40px 120px -30px rgba(0,0,0,.95);
+}
+dialog.lb::backdrop{background:rgba(5,5,8,.74);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.lb-in{padding:clamp(22px,3.4vw,32px);max-height:min(84vh,860px);overflow-y:auto}
+.lb-head{display:flex;align-items:flex-start;gap:18px;justify-content:space-between;margin-bottom:20px}
+.lb-k{font-family:var(--mono);font-size:10.5px;letter-spacing:.26em;color:var(--matrix);font-weight:600}
+.lb-head h3{font-size:clamp(20px,2.4vw,26px);letter-spacing:-.02em;font-weight:700;margin:8px 0 6px}
+.lb-sub{font-family:var(--mono);font-size:11.5px;color:var(--text3);letter-spacing:.03em}
+.lb-x{
+  flex:none;appearance:none;background:transparent;border:1px solid var(--stroke2);border-radius:9px;
+  color:var(--text2);width:34px;height:34px;display:grid;place-items:center;cursor:pointer;
+  transition:color .15s,border-color .15s;
+}
+.lb-x:hover{color:var(--text);border-color:var(--text3)}
+.lb-grid{border:1px solid var(--stroke);border-radius:12px;background:var(--surface);padding:4px 16px;margin-bottom:24px}
+.lb-row{display:flex;justify-content:space-between;gap:18px;padding:9px 0;border-top:1px dashed var(--stroke);
+  font-family:var(--mono);font-size:12px}
+.lb-row:first-child{border-top:0}
+.lb-row .k{color:var(--text3);letter-spacing:.08em;text-transform:uppercase;font-size:10.5px;padding-top:2px;flex:none}
+.lb-row .v{color:var(--text2);text-align:right;word-break:break-word}
+.lb-row .v.ok{color:var(--matrix)}
+.lb-sec{margin-bottom:22px;padding:0} /* padding:0 — these are <section>s, which the page styles heavily */
+.lb-sec:last-of-type{margin-bottom:0}
+.lb-sec .t{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--text3);text-transform:uppercase;
+  display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.lb-sec .t::after{content:"";height:1px;flex:1;background:var(--stroke)}
+.lb-steps{list-style:none;display:flex;flex-direction:column;gap:9px}
+.lb-steps li{display:flex;gap:12px;font-size:14px;color:var(--text2);line-height:1.55}
+.lb-steps li b{font-family:var(--mono);font-size:11px;color:var(--matrix);font-weight:600;flex:none;padding-top:3px}
+.lb-steps li code{font-family:var(--mono);font-size:12.5px;color:var(--text);background:var(--surface2);
+  border:1px solid var(--stroke);border-radius:5px;padding:0 6px;white-space:nowrap}
+.lb-note{margin-top:22px;padding-top:16px;border-top:1px solid var(--stroke);
+  font-size:12.5px;color:var(--text3);display:flex;gap:9px;align-items:flex-start}
+.lb-note a{color:var(--text2);border-bottom:1px solid var(--stroke2)}
+.lb-note a:hover{color:var(--matrix);border-color:var(--matrix)}
+.term.anim .t-hide{visibility:hidden}
+.term.anim .stamp{opacity:0}
+/* fill: backwards only — a forwards/both fill would outrank the :hover rule and kill the affordance */
+.term .stamp.in{opacity:1;animation:stamp-press .5s backwards}
+.term .stamp.in::before{animation:stamp-shock .5s ease-out}
+@keyframes stamp-press{
+  0%  {opacity:0;transform:rotate(-11deg) scale(1.9);animation-timing-function:cubic-bezier(.45,0,.85,.55)}
+  52% {opacity:1;transform:rotate(-2.2deg) scale(.945);animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+  72% {transform:rotate(-2.2deg) scale(1.022)}
+  100%{opacity:1;transform:rotate(-2.2deg) scale(1)}
+}
+@keyframes stamp-shock{ /* ink shock ring on impact */
+  0%,50%{opacity:0;transform:scale(.92)}
+  62%   {opacity:.45;transform:scale(1.04)}
+  100%  {opacity:0;transform:scale(1.5)}
+}
+.term-foot{padding:13px 22px;border-top:1px solid var(--stroke);display:flex;gap:9px;align-items:center;
+  font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.05em}
+.term-foot svg{color:var(--text3);flex:none}
+@media(max-width:900px){
+  .hero-grid{grid-template-columns:1fr}
+  .term-body{min-height:0}
+}
+@media(max-width:480px){
+  .term-body{font-size:11px;padding:18px 16px 22px}
+  .term-body .opt{display:none}
+  .term-bar .dots{display:none}
+  .term-bar .title{font-size:10.5px}
+}
+
+/* ============ backends strip ============ */
+.strip{border-top:1px solid var(--stroke);border-bottom:1px solid var(--stroke);background:var(--bg2)}
+.strip-in{display:flex;align-items:center;gap:clamp(18px,3.5vw,44px);padding:18px var(--pad);
+  max-width:var(--maxw);margin:0 auto;flex-wrap:wrap}
+.strip .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--text3);text-transform:uppercase;flex:none}
+.strip .names{display:flex;flex-wrap:wrap;gap:clamp(14px,2.6vw,34px);align-items:center}
+.strip .names span{font-weight:600;font-size:14.5px;color:var(--text3);letter-spacing:.02em;transition:color .2s;
+  font-feature-settings:"zero" 1}
+.strip .names span:hover{color:var(--text2)}
+.strip .names em{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--text3);
+  border:1px solid var(--stroke);padding:2px 7px;border-radius:999px;margin-left:7px;vertical-align:2px;letter-spacing:.08em}
+
+/* ============ sections ============ */
+section{padding:clamp(72px,10vh,120px) 0;position:relative}
+.seclabel{display:flex;align-items:baseline;gap:14px;margin-bottom:22px}
+.seclabel .num{font-family:var(--mono);font-size:12px;color:var(--ember);font-weight:600;letter-spacing:.06em}
+.seclabel .t{font-family:var(--mono);font-size:11.5px;letter-spacing:.24em;color:var(--text3);text-transform:uppercase;font-weight:500}
+h2{font-size:clamp(30px,3.6vw,46px);letter-spacing:-.025em;line-height:1.08;font-weight:700;margin-bottom:18px;max-width:18em}
+.sub{color:var(--text2);max-width:38em;font-size:17px}
+.sub a{color:var(--text);border-bottom:1px solid var(--stroke2)}
+.sub a:hover{border-color:var(--ember);color:var(--ember)}
+
+/* ============ standing rule band ============ */
+.band{
+  border-top:1px solid var(--stroke);border-bottom:1px solid var(--stroke);
+  padding:clamp(56px,9vh,100px) 0;background:
+    radial-gradient(700px 300px at 50% 120%,rgba(249,115,22,.09),transparent 70%);
+  text-align:center;overflow:hidden;position:relative;
+}
+.band .ghost{
+  position:absolute;inset:auto 0 -14px;font-family:var(--mono);font-weight:600;white-space:nowrap;
+  font-size:11px;letter-spacing:.34em;color:var(--text3);opacity:.5;user-select:none;
+}
+.band h2{max-width:none;margin:0 auto 14px;font-size:clamp(40px,7.2vw,96px);letter-spacing:-.04em}
+.band h2 .no{color:var(--ember)}
+.band p{color:var(--text2);max-width:44em;margin:0 auto;font-size:17px}
+.band .mono-note{margin-top:26px;font-family:var(--mono);font-size:12px;color:var(--text3);letter-spacing:.06em}
+
+/* ============ proof vs policy ============ */
+.duel{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:46px}
+.card{
+  border:1px solid var(--stroke);border-radius:16px;background:var(--surface);
+  padding:clamp(24px,3vw,36px);position:relative;overflow:hidden;
+}
+.duel .card.policy{border-style:dashed}
+.duel .card.proof{border-color:var(--matrix-dim);background:linear-gradient(180deg,rgba(0,255,65,.09),transparent 55%)}
+.duel .k{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+  display:inline-flex;align-items:center;gap:9px;padding:7px 13px;border-radius:999px;border:1px solid var(--stroke2);
+  color:var(--text2);margin-bottom:22px}
+.duel .proof .k{border-color:var(--matrix-dim);color:var(--matrix)}
+.duel blockquote{
+  font-size:clamp(19px,2vw,24px);line-height:1.4;letter-spacing:-.01em;font-weight:500;
+  margin-bottom:18px;color:var(--text);
+}
+.duel .policy blockquote{color:var(--text2);font-style:italic}
+.duel p{color:var(--text2);font-size:15.5px}
+.duel .verdict{margin-top:24px;padding-top:18px;border-top:1px solid var(--stroke);
+  font-family:var(--mono);font-size:12px;letter-spacing:.08em;display:flex;gap:10px;align-items:center}
+.duel .policy .verdict{color:var(--text3)}
+.duel .proof .verdict{color:var(--matrix)}
+@media(max-width:820px){.duel{grid-template-columns:1fr}}
+
+/* ============ steps ============ */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:52px;
+  border:1px solid var(--stroke);border-radius:16px;overflow:hidden;background:var(--surface)}
+.step{padding:30px 26px 34px;border-left:1px solid var(--stroke);position:relative;transition:background .25s}
+.step:first-child{border-left:0}
+.step:hover{background:var(--surface2)}
+.step .n{font-family:var(--mono);font-size:12px;color:var(--ember);letter-spacing:.1em;font-weight:600}
+.step .ico{margin:22px 0 16px;color:var(--text);opacity:.9}
+.step h3{font-size:17.5px;font-weight:600;letter-spacing:-.01em;margin-bottom:10px}
+.step p{font-size:14.5px;color:var(--text2)}
+.step .fail{margin-top:16px;font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.04em;
+  display:flex;gap:8px;align-items:flex-start}
+.step .fail b{color:var(--ember);font-weight:500}
+.wax{
+  position:absolute;top:14px;right:16px;width:56px;height:56px;transform:rotate(9deg);
+  filter:drop-shadow(0 5px 10px rgba(0,0,0,.55));pointer-events:none;
+}
+@media(max-width:1020px){.steps{grid-template-columns:1fr 1fr}.step:nth-child(3){border-left:0}
+  .step:nth-child(n+3){border-top:1px solid var(--stroke)}}
+@media(max-width:560px){.steps{grid-template-columns:1fr}.step{border-left:0}
+  .step:nth-child(n+2){border-top:1px solid var(--stroke)}}
+
+/* ============ trust levels ============ */
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:52px}
+.level{border:1px solid var(--stroke);border-radius:16px;padding:26px 24px 28px;background:var(--surface);
+  display:flex;flex-direction:column;gap:0;transition:border-color .25s,transform .25s}
+.level:hover{border-color:var(--stroke2);transform:translateY(-3px)}
+.level .ico{color:var(--text);margin-bottom:18px}
+.level h3{font-size:18px;font-weight:600;margin-bottom:8px;letter-spacing:-.01em}
+.level p{font-size:14.5px;color:var(--text2);flex:1}
+.level .trust{margin-top:20px;padding-top:16px;border-top:1px dashed var(--stroke);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--text3);text-transform:uppercase}
+.level .trust b{color:var(--text2);font-weight:500;display:block;margin-top:3px;letter-spacing:.06em}
+.levels-note{margin-top:26px;font-family:var(--mono);font-size:12.5px;color:var(--text3);
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.levels-note code{color:var(--text2);background:var(--surface2);border:1px solid var(--stroke);
+  padding:3px 9px;border-radius:6px;font-size:12px}
+@media(max-width:1020px){.levels{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.levels{grid-template-columns:1fr}}
+
+/* ============ compare table ============ */
+.tablewrap{margin-top:52px;border:1px solid var(--stroke);border-radius:16px;overflow-x:auto;background:var(--surface)}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th,td{text-align:left;padding:17px 22px;border-top:1px solid var(--stroke);font-size:15px;vertical-align:top}
+thead th{border-top:0;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--text3);font-weight:500;padding-top:20px;padding-bottom:14px}
+tbody th{font-weight:600;color:var(--text);width:24%;font-size:14.5px}
+td{color:var(--text2)}
+td.win{color:var(--text)}
+td .pill{display:inline-flex;align-items:center;gap:8px}
+td .pill svg{color:var(--matrix);flex:none}
+col.weai-col{background:var(--matrix-soft)}
+thead th.weai{color:var(--matrix)}
+
+/* ============ download ============ */
+#download .dl-card{
+  margin-top:52px;border:1px solid var(--ember-dim);border-radius:20px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(249,115,22,.08),rgba(249,115,22,.015) 55%),var(--bg2);
+}
+.dl-top{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(28px,4vw,60px);padding:clamp(30px,4vw,52px)}
+.dl-top h3{font-size:clamp(24px,2.6vw,34px);letter-spacing:-.02em;font-weight:700;margin-bottom:12px}
+.dl-top .p{color:var(--text2);font-size:16px;max-width:30em}
+.dl-specs{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.dl-actions{margin-top:32px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.btn-big{padding:15px 26px;font-size:16px;border-radius:12px}
+.dl-side{display:flex;flex-direction:column;justify-content:center;gap:14px}
+.hashbox{border:1px solid var(--stroke);border-radius:12px;background:rgba(0,0,0,.35);padding:16px 18px}
+.hashbox .hl{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.hashbox .hl span{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--text3);text-transform:uppercase}
+.copybtn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--text2);
+  border:1px solid var(--stroke2);background:transparent;border-radius:7px;padding:5px 11px;cursor:pointer;
+  display:inline-flex;gap:7px;align-items:center;transition:color .15s,border-color .15s}
+.copybtn:hover{color:var(--text);border-color:var(--text3)}
+.copybtn.done{color:var(--ember);border-color:var(--ember-dim)}
+.hash{font-family:var(--mono);font-size:12px;color:var(--text2);word-break:break-all;line-height:1.7}
+.verify{border:1px solid var(--stroke);border-radius:12px;background:rgba(0,0,0,.35);padding:16px 18px;
+  font-family:var(--mono);font-size:12.5px;line-height:1.9;color:var(--text2);overflow-x:auto}
+.verify .c{color:var(--text3)}
+.verify .p{color:var(--ember)}
+.dl-foot{border-top:1px solid var(--stroke);padding:18px clamp(30px,4vw,52px);display:flex;gap:26px;flex-wrap:wrap;
+  font-size:13.5px;color:var(--text3);align-items:center}
+.dl-foot .item{display:flex;gap:9px;align-items:center}
+.dl-foot svg{flex:none;color:var(--text3)}
+.dl-foot code{font-family:var(--mono);font-size:12px;color:var(--text2)}
+@media(max-width:900px){.dl-top{grid-template-columns:1fr}}
+
+/* ============ faq ============ */
+.faq{margin-top:46px;border-top:1px solid var(--stroke)}
+details{border-bottom:1px solid var(--stroke)}
+summary{
+  cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:18px;
+  padding:24px 4px;font-size:clamp(16.5px,1.7vw,19px);font-weight:600;letter-spacing:-.01em;
+  transition:color .15s;
+}
+summary::-webkit-details-marker{display:none}
+summary:hover{color:var(--ember-hi)}
+summary .qn{font-family:var(--mono);font-size:12px;color:var(--text3);flex:none;letter-spacing:.06em}
+summary .plus{margin-left:auto;flex:none;color:var(--text3);transition:transform .25s;align-self:center}
+details[open] .plus{transform:rotate(45deg);color:var(--ember)}
+details .a{padding:0 4px 28px 46px;color:var(--text2);max-width:52em;font-size:15.5px}
+details .a a{color:var(--text);border-bottom:1px solid var(--stroke2)}
+details .a a:hover{color:var(--ember);border-color:var(--ember)}
+details .a code{font-family:var(--mono);font-size:13px;background:var(--surface2);border:1px solid var(--stroke);
+  border-radius:5px;padding:1px 7px;color:var(--text2)}
+
+/* ============ footer ============ */
+footer{border-top:1px solid var(--stroke);padding:52px 0 60px;background:var(--bg2)}
+.foot-in{display:flex;gap:34px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between}
+.foot-brand{display:flex;flex-direction:column;gap:12px;max-width:32em}
+.foot-brand .row{display:flex;align-items:center;gap:10px;font-weight:600;font-size:17px}
+.foot-brand p{color:var(--text3);font-size:14px}
+.foot-links{display:flex;gap:clamp(28px,5vw,64px);flex-wrap:wrap}
+.foot-links .col{display:flex;flex-direction:column;gap:11px;min-width:130px}
+.foot-links .h{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;color:var(--text3);text-transform:uppercase;margin-bottom:4px}
+.foot-links a{color:var(--text2);font-size:14.5px}
+.foot-links a:hover{color:var(--text)}
+.foot-base{margin-top:44px;padding-top:22px;border-top:1px solid var(--stroke);
+  display:flex;gap:18px;flex-wrap:wrap;justify-content:space-between;
+  font-family:var(--mono);font-size:11.5px;color:var(--text3);letter-spacing:.04em}
+
+/* ============ reveal ============ */
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .term.anim .t-hide{visibility:visible}
+  .term.anim .stamp{opacity:1}
+  .term .stamp.in,.term .stamp.in::before{animation:none}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- ================= NAV ================= -->
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#" aria-label="WeAI home">
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M16 3l10 5v8c0 6.5-4.3 10.9-10 13C10.3 26.9 6 22.5 6 16V8l10-5z" stroke="currentColor" stroke-width="2"/>
+        <path d="M11.5 15.5l3 3 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="name">WeAI</span>
+      <span class="tag">Verifiable private inference</span>
+    </a>
+    <nav class="links" aria-label="Main">
+      <a href="#proof">Proof</a>
+      <a href="#how">How it works</a>
+      <a href="#backends">Backends</a>
+      <a href="#atrest">At rest</a>
+      <a href="#compare">Compare</a>
+      <a href="#faq">FAQ</a>
+      <a href="docs.html">Threat model</a>
+      <a class="btn btn-ember btn-nav" href="#download">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ================= HERO ================= -->
+<section class="hero" aria-labelledby="hero-h">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Trust, replaced by proof</p>
+      <h1 id="hero-h">Privacy by <span class="ember">proof</span>,<br>not by promise<span class="dim">.</span></h1>
+      <p class="lede">
+        Most AI providers protect your data with a <strong>policy</strong> — words in a document you can't check.
+        WeAI is a native macOS client where the guarantee is <strong>cryptographic</strong>: every connection
+        verifies a <strong>hardware attestation</strong> before a single byte of plaintext leaves your Mac,
+        and the decryption keys live inside the enclave — so nobody in the middle can inspect your data.
+        <strong>Even if they wanted to.</strong>
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-ember btn-big" href="https://github.com/avantigroupai/WeAI-releases/releases/latest/download/WeAI.dmg">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download for macOS
+        </a>
+        <a class="btn btn-ghost" href="docs.html">
+          Read the threat model
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+      <div class="hero-meta">
+        <span class="chip">macOS 14+ · Apple&nbsp;Silicon</span>
+        <span class="chip" id="hero-version">v0.1.9 · 23&nbsp;MB</span>
+        <span class="chip">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l8 4v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10V6l8-4z" stroke="currentColor" stroke-width="2"/></svg>
+          SHA-256 pinned below
+        </span>
+      </div>
+    </div>
+
+    <!-- the memorable anchor: a live attestation handshake -->
+    <div class="term" id="term" aria-label="Attestation handshake transcript">
+      <div class="term-bar">
+        <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="title">weai · secure channel</span>
+        <span class="live"><b aria-hidden="true"></b>ATTESTING</span>
+      </div>
+      <div class="term-body" id="term-body">
+        <div class="ln"><span class="p">$</span><span class="cmd" id="type-target">weai connect swiss-ai/apertus-70b</span><span class="caret" id="caret" aria-hidden="true"></span></div>
+        <div class="ln row t-hide"><span class="lbl">requesting attestation report</span><span class="leader"></span><span class="st"><span class="ok">received</span></span></div>
+        <div class="ln row t-hide"><span class="lbl">verifying vendor signature</span><span class="leader"></span><span class="st"><span class="ok">ok</span> <span class="note opt">· AMD SEV-SNP</span></span></div>
+        <div class="ln row t-hide"><span class="lbl">enclave measurement</span><span class="leader"></span><span class="st"><span class="ok">match</span></span></div>
+        <div class="ln row t-hide"><span class="lbl">binding session key to enclave</span><span class="leader"></span><span class="st"><span class="ok">pinned</span></span></div>
+        <div class="ln row t-hide"><span class="lbl">decryption keys</span><span class="leader"></span><span class="st"><span class="ok">enclave-only</span></span></div>
+        <div class="rule t-hide" aria-hidden="true"></div>
+        <div class="ln t-hide"><span class="note"># any mismatch ⇒ refused — nothing sent</span></div>
+        <div class="ln t-hide"><span>channel sealed — plaintext may now leave this Mac</span></div>
+        <button type="button" class="stamp t-hide" id="stamp" title="View the attestation dossier"
+                aria-haspopup="dialog" aria-controls="dossier">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l8 4v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10V6l8-4z" stroke="currentColor" stroke-width="2"/><path d="M8.5 12l2.5 2.5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          VERIFIED
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="opacity:.75"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="term-foot">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 10V7a4 4 0 118 0v3" stroke="currentColor" stroke-width="2"/></svg>
+        verification runs in the client, on your machine — before any prompt is transmitted
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BACKENDS STRIP ================= -->
+<div class="strip" role="note" aria-label="Supported backends">
+  <div class="strip-in">
+    <span class="lbl">Speaks&nbsp;to</span>
+    <div class="names">
+      <span>Tinfoil<em>TEE</em></span>
+      <span>0G<em>web3</em></span>
+      <span>io.net<em>web3</em></span>
+      <span>Hyperbolic<em>web3</em></span>
+      <span>Venice<em>web3</em></span>
+      <span>Akash<em>web3</em></span>
+      <span>LM&nbsp;Studio<em>local</em></span>
+      <span>Ollama<em>local</em></span>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 01 · POLICY VS PROOF ================= -->
+<section id="proof" aria-labelledby="proof-h">
+  <div class="wrap">
+    <div class="seclabel reveal"><span class="num">§ 01</span><span class="t">Policy vs. proof</span></div>
+    <h2 id="proof-h" class="reveal">Two kinds of “we can't see your data.”<br>Only one can be checked.</h2>
+    <p class="sub reveal">The words are identical. What stands behind them is not.</p>
+
+    <div class="duel">
+      <article class="card policy reveal">
+        <span class="k">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h7l5 5v13H7V3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5M10 13h6m-6 4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          The policy model
+        </span>
+        <blockquote>“We do not train on your data. Your conversations are private.”</blockquote>
+        <p>A sentence in a privacy policy. You can't verify it, you can't enforce it, and you'd never
+        know if it were quietly broken — by an employee, an acquisition, a subpoena, or a breach.
+        The provider holds the keys; you hold a promise.</p>
+        <div class="verdict">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M9 9l6 6m0-6l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          TRUST REQUIRED · UNVERIFIABLE
+        </div>
+      </article>
+
+      <article class="card proof reveal">
+        <span class="k">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l8 4v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10V6l8-4z" stroke="currentColor" stroke-width="2"/><path d="M8.5 12l2.5 2.5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          The proof model
+        </span>
+        <blockquote>“Here is a signed hardware attestation. Check it yourself — before you send anything.”</blockquote>
+        <p>With WeAI and attested backends like Tinfoil, the enclave proves — cryptographically, per
+        connection — exactly what code is running and that decryption keys exist only inside its
+        boundary. Your client checks the proof <em>first</em>. If it doesn't hold, no plaintext is sent.
+        Not a promise. A protocol.</p>
+        <div class="verdict">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l8 4v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10V6l8-4z" stroke="currentColor" stroke-width="2"/><path d="M8.5 12l2.5 2.5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          TRUST REMOVED · VERIFIED CLIENT-SIDE
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STANDING RULE ================= -->
+<div class="band" role="note">
+  <div class="wrap">
+    <h2 class="reveal"><span class="no">No proof,</span> no plaintext.</h2>
+    <p class="reveal">The one rule WeAI never bends: attestation is verified <em>before</em> transmission,
+    or the prompt stays on your Mac. There is no fallback, no “send anyway,” no silent downgrade.</p>
+    <p class="mono-note reveal">verify(attestation) == expected_measurement&nbsp;&nbsp;∥&nbsp;&nbsp;abort()</p>
+  </div>
+  <span class="ghost" aria-hidden="true">ATTEST · VERIFY · PIN · SEND — ATTEST · VERIFY · PIN · SEND — ATTEST · VERIFY · PIN · SEND</span>
+</div>
+
+<!-- ================= 02 · HOW IT WORKS ================= -->
+<section id="how" aria-labelledby="how-h">
+  <div class="wrap">
+    <div class="seclabel reveal"><span class="num">§ 02</span><span class="t">The handshake</span></div>
+    <h2 id="how-h" class="reveal">How a connection earns your prompt</h2>
+    <p class="sub reveal">Four checks, executed by the client on your machine. Each one can kill the connection;
+    all four must pass before anything leaves.</p>
+
+    <div class="steps reveal">
+      <article class="step">
+        <span class="n">01</span>
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M9 3v2.5M15 3v2.5M9 18.5V21M15 18.5V21M3 9h2.5M3 15h2.5M18.5 9H21M18.5 15H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Demand the report</h3>
+        <p>The enclave must produce an attestation report — a statement of the exact code and
+        hardware state it is running — signed by the silicon itself (AMD SEV-SNP, Intel TDX, NVIDIA CC).</p>
+        <p class="fail"><b>⊘</b> No report → no connection.</p>
+      </article>
+      <article class="step">
+        <span class="n">02</span>
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 11l1.8 1.8 3.4-3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3>Check the measurement</h3>
+        <p>The report's code measurement is compared against the expected, auditable build of the
+        inference stack. A provider can't swap in logging code without changing the measurement.</p>
+        <p class="fail"><b>⊘</b> Mismatch → connection refused.</p>
+      </article>
+      <article class="step">
+        <span class="n">03</span>
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="8.5" cy="14.5" r="4.5" stroke="currentColor" stroke-width="1.8"/><path d="M11.8 11.2L20 3m-3.5 3.5L19 9m-5-2.5L16.5 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Pin keys to the enclave</h3>
+        <p>The session key is bound into the attested boundary. Decryption keys are generated and held
+        <em>inside</em> the enclave — they never exist on any disk, in any log, or in any operator's hands.</p>
+        <p class="fail"><b>⊘</b> Keys outside → impossible by construction.</p>
+      </article>
+      <article class="step">
+        <span class="n">04</span>
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 118 0v3" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/></svg></div>
+        <h3>Send — sealed</h3>
+        <p>Only now does plaintext leave your Mac, encrypted end-to-end into the enclave. Anyone in
+        between — networks, clouds, us — sees ciphertext and nothing else.</p>
+        <p class="fail"><b>✓</b> Recorded traffic stays ciphertext.</p>
+        <svg class="wax" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <radialGradient id="waxg" cx="36%" cy="30%" r="80%">
+              <stop offset="0%" stop-color="#e05a64"/>
+              <stop offset="45%" stop-color="#b02231"/>
+              <stop offset="100%" stop-color="#6e0f1c"/>
+            </radialGradient>
+          </defs>
+          <path d="M60 32 A15 15 0 0 1 53 47.3 A15 15 0 0 1 41 59.6 A16 16 0 0 1 24.3 55.8 A15 15 0 0 1 9.3 48.5 A16 16 0 0 1 5 32 A15 15 0 0 1 8.5 15 A16 16 0 0 1 24.3 8.2 A15 15 0 0 1 40.7 5.4 A16 16 0 0 1 53 16.7 A15 15 0 0 1 60 32 Z"
+                fill="url(#waxg)" stroke="rgba(0,0,0,.35)" stroke-width="1"/>
+          <circle cx="32" cy="32" r="18.5" fill="rgba(0,0,0,.15)"/>
+          <circle cx="32" cy="32.7" r="18.5" fill="none" stroke="rgba(255,150,140,.22)" stroke-width="1.1"/>
+          <circle cx="32" cy="31.6" r="18.5" fill="none" stroke="rgba(0,0,0,.38)" stroke-width="1.1"/>
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6">
+            <g transform="translate(20.4,20.9) scale(0.72)" stroke="rgba(255,160,150,.25)">
+              <path d="M16 3l10 5v8c0 6.5-4.3 10.9-10 13C10.3 26.9 6 22.5 6 16V8l10-5z"/>
+              <path d="M11.5 15.5l3 3 6-6"/>
+            </g>
+            <g transform="translate(20.4,20.2) scale(0.72)" stroke="#520b17">
+              <path d="M16 3l10 5v8c0 6.5-4.3 10.9-10 13C10.3 26.9 6 22.5 6 16V8l10-5z"/>
+              <path d="M11.5 15.5l3 3 6-6"/>
+            </g>
+          </g>
+        </svg>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 03 · BACKENDS / TRUST LEVELS ================= -->
+<section id="backends" aria-labelledby="backends-h">
+  <div class="wrap">
+    <div class="seclabel reveal"><span class="num">§ 03</span><span class="t">Choose your trust level</span></div>
+    <h2 id="backends-h" class="reveal">One client. Four ways to run.<br>Trust is always labeled.</h2>
+    <p class="sub reveal">Every provider in WeAI carries an explicit trust class in the UI — you always know
+    exactly who could, in principle, see a prompt. For many of them the honest answer is: no one.</p>
+
+    <div class="levels">
+      <article class="level reveal">
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Local</h3>
+        <p>LM Studio, Ollama or the built-in engine, on your own Apple Silicon. Nothing leaves the
+        machine — the strongest privacy there is.</p>
+        <p class="trust">Trust required<b>None. It's your hardware.</b></p>
+      </article>
+      <article class="level reveal">
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="2.5" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="6" r="2.5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="18" r="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 7.5l8-1.5M7.5 8l3 8m6-8.5l-3 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Friend mesh</h3>
+        <p>Borrow a friend's GPU over a mutually-authenticated, post-quantum SecureChannel
+        (X25519 + ML-KEM-768). Invites are Ed25519-signed; relays only ever carry ciphertext.</p>
+        <p class="trust">Trust required<b>People you explicitly invited.</b></p>
+      </article>
+      <article class="level reveal">
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l8 4v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10V6l8-4z" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 12l2.5 2.5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3>Attested cloud</h3>
+        <p>Frontier-scale models inside hardware enclaves — e.g. Tinfoil. Attestation verified before
+        plaintext, keys sealed inside. Cloud convenience without cloud trust.</p>
+        <p class="trust">Trust required<b>The silicon — and math.</b></p>
+      </article>
+      <article class="level reveal">
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h18M12 3c2.8 2.6 4 5.6 4 9s-1.2 6.4-4 9c-2.8-2.6-4-5.6-4-9s1.2-6.4 4-9z" stroke="currentColor" stroke-width="1.8"/></svg></div>
+        <h3>Web3 / decentralized</h3>
+        <p>Open compute markets — 0G, io.net, Hyperbolic, Venice, Akash, Chutes. No single company in
+        the loop; WeAI labels exactly what is and isn't verifiable per provider.</p>
+        <p class="trust">Trust required<b>Distributed operators, labeled honestly.</b></p>
+      </article>
+    </div>
+
+    <p class="levels-note reveal">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 17l6-6-6-6m8 14h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Any OpenAI-compatible tool can ride along: point Cursor, Continue or your SDK at
+      <code>http://127.0.0.1:4380/v1</code> and it inherits the same verified routing.
+    </p>
+  </div>
+</section>
+
+<!-- ================= 04 · AT REST ================= -->
+<section id="atrest" aria-labelledby="atrest-h">
+  <div class="wrap">
+    <div class="seclabel reveal"><span class="num">§ 04</span><span class="t">Your data at rest</span></div>
+    <h2 id="atrest-h" class="reveal">The strongest promise is the one<br>you don't have to make.</h2>
+    <p class="sub reveal">WeAI's default is to write nothing down. Everything below is opt-in, disclosed
+    before you turn it on, and reversible — and where it isn't reversible, we say so first.</p>
+
+    <div class="levels">
+      <article class="level reveal">
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6c0-1.1 3.6-2 8-2s8 .9 8 2-3.6 2-8 2-8-.9-8-2z" stroke="currentColor" stroke-width="1.8"/><path d="M4 6v12c0 1.1 3.6 2 8 2s8-.9 8-2V6" stroke="currentColor" stroke-width="1.8"/><path d="M4 12c0 1.1 3.6 2 8 2s8-.9 8-2" stroke="currentColor" stroke-width="1.8"/></svg></div>
+        <h3>wDrive</h3>
+        <p>Files encrypted on your Mac before they go anywhere, content-addressed and anchored to 0G
+        by merkle root — so anyone can verify the bytes without being able to read them. Chunk
+        dedup, version history, shared vaults, and a verifier page that uses none of our code.</p>
+        <p class="trust">Trust required<b>None for reading. Math for the rest.</b></p>
+      </article>
+      <article class="level reveal">
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12a9 9 0 11-3.2-6.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M21 3v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3>Conversation history</h3>
+        <p><b>Off by default</b> — with it off, your chats live in memory and are gone at quit.
+        Switch it on and threads are sealed under a key held in your Keychain <em>combined with</em>
+        your passphrase. Neither factor alone opens anything. Changing the passphrase re-wraps 32
+        bytes; it never re-encrypts the archive.</p>
+        <p class="trust">Trust required<b>Your Mac, and your memory.</b></p>
+      </article>
+      <article class="level reveal">
+        <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 118 0v3" stroke="currentColor" stroke-width="1.8"/><path d="M9 15h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>No public keys at rest</h3>
+        <p>Nothing stored on disk is protected by RSA, P-256 or X25519 — the algorithms a future
+        quantum computer breaks. <em>Harvest now, decrypt later</em> attacks stored data through its
+        key wrapping, and symmetric AEAD is not in that category. The property is achieved by
+        subtraction, so there is no hybrid to get wrong.</p>
+        <p class="trust">Trust required<b>ChaCha20-Poly1305, and nothing else.</b></p>
+      </article>
+    </div>
+
+    <p class="levels-note reveal">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Publishing a replica to 0G is <b>permanent and public</b>. It is unreadable without your
+      passphrase — that is the whole protection — but it can never be recalled, only left unopened.
+      WeAI tells you this before the first push, not after.
+    </p>
+  </div>
+</section>
+
+<!-- ================= 05 · COMPARE ================= -->
+<section id="compare" aria-labelledby="compare-h">
+  <div class="wrap">
+    <div class="seclabel reveal"><span class="num">§ 05</span><span class="t">Side by side</span></div>
+    <h2 id="compare-h" class="reveal">Policy cloud vs. WeAI</h2>
+    <p class="sub reveal">Same question — <em>“who can read my prompts?”</em> — answered structurally.</p>
+
+    <div class="tablewrap reveal">
+      <table>
+        <colgroup><col style="width:24%"><col style="width:38%"><col class="weai-col" style="width:38%"></colgroup>
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col">Typical AI cloud</th>
+            <th scope="col" class="weai">WeAI + attested backend</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">The guarantee</th>
+            <td>A privacy policy. Revocable, unverifiable, changes with a legal-page edit.</td>
+            <td class="win"><span class="pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Hardware attestation, cryptographically verified on every connection.</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Who can read prompts</th>
+            <td>Provider staff, compromised insiders, acquirers, anyone with a subpoena or a breach.</td>
+            <td class="win"><span class="pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>No one outside the enclave boundary — the operator included.</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Verification</th>
+            <td>None offered. You are asked to believe.</td>
+            <td class="win"><span class="pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Client-side, before any plaintext is transmitted. Fail = refuse.</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Key custody</th>
+            <td>Provider-managed keys; decryption happens on their servers, under their control.</td>
+            <td class="win"><span class="pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Decryption keys exist only inside the attested enclave.</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Local models</th>
+            <td>—</td>
+            <td class="win">First-class: LM Studio, Ollama, built-in engine. Zero bytes leave the Mac.</td>
+          </tr>
+          <tr>
+            <th scope="row">Peer-to-peer compute</th>
+            <td>—</td>
+            <td class="win">Borrow a friend's GPU over a post-quantum channel (X25519 + ML-KEM-768).</td>
+          </tr>
+          <tr>
+            <th scope="row">Client</th>
+            <td>A closed web page you re-download on every visit.</td>
+            <td class="win">Native macOS app with a documented architecture and an honest, public threat model.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 05 · DOWNLOAD ================= -->
+<section id="download" aria-labelledby="dl-h">
+  <div class="wrap">
+    <div class="seclabel reveal"><span class="num">§ 06</span><span class="t">Get WeAI</span></div>
+    <h2 id="dl-h" class="reveal">Download. Verify. <span style="color:var(--ember)">Then</span> trust.</h2>
+    <p class="sub reveal">Practice what the product preaches: check the artifact's SHA-256 before you run it.</p>
+
+    <div class="dl-card reveal">
+      <div class="dl-top">
+        <div>
+          <h3>WeAI for macOS</h3>
+          <p class="p">Native SwiftUI app for Apple Silicon. Ships with a zero-setup demo engine —
+          useful in the first ten seconds, verifiable ever after.</p>
+          <div class="dl-specs">
+            <span class="chip" id="dl-version">v0.1.9</span>
+            <span class="chip">macOS 14+</span>
+            <span class="chip">Apple Silicon (arm64)</span>
+            <span class="chip" id="dl-size">23 MB dmg</span>
+          </div>
+          <div class="dl-actions">
+            <a class="btn btn-ember btn-big" href="https://github.com/avantigroupai/WeAI-releases/releases/latest/download/WeAI.dmg">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Download WeAI.dmg
+            </a>
+            <a class="btn btn-ghost" href="docs.html">Architecture &amp; docs</a>
+          </div>
+        </div>
+        <div class="dl-side">
+          <div class="hashbox">
+            <div class="hl">
+              <span>SHA-256 · WeAI.dmg</span>
+              <button class="copybtn" id="copyhash" type="button" aria-label="Copy SHA-256 checksum">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/></svg>
+                copy
+              </button>
+            </div>
+            <div class="hash" id="hashval">f5110a7e6743a0224a3d8267d86f93ed553cd03d42bf664be1b80760726223df</div>
+          </div>
+          <div class="verify" aria-label="Verify the download">
+            <div><span class="c"># verify before first launch</span></div>
+            <div><span class="p">$</span> shasum -a 256 ~/Downloads/WeAI.dmg</div>
+            <div><span class="c" id="hashshort"># must print f5110a7e…0726223df — anything else: delete it</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="dl-foot">
+        <span class="item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v5m0 3v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span id="dl-signing">Developer ID signed, notarization pending — first launch: right-click → <b>&nbsp;Open</b> (macOS&nbsp;15+: System Settings → Privacy&nbsp;&amp;&nbsp;Security → <b>Open&nbsp;Anyway</b>)</span>
+        </span>
+        <span class="item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 8l-4 4 4 4m10-8l4 4-4 4M14 4l-4 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Prefer to compile it yourself?&nbsp;<code>./scripts/bundle.sh</code>
+        </span>
+        <span class="item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l8 4v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10V6l8-4z" stroke="currentColor" stroke-width="2"/></svg>
+          Windows &amp; Linux: on the roadmap — macOS first, done right
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 06 · FAQ ================= -->
+<section id="faq" aria-labelledby="faq-h">
+  <div class="wrap">
+    <div class="seclabel reveal"><span class="num">§ 07</span><span class="t">Questions, answered straight</span></div>
+    <h2 id="faq-h" class="reveal">FAQ</h2>
+
+    <div class="faq reveal">
+      <details>
+        <summary><span class="qn">Q·01</span>What does a hardware attestation actually prove?
+          <span class="plus" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="a">It's a statement signed by the CPU/GPU vendor's silicon (AMD SEV-SNP, Intel TDX,
+        NVIDIA Confidential Computing) that says: <em>this exact code, with this exact measurement, is running
+        inside an isolated enclave whose memory even the host operating system and the cloud operator cannot
+        read.</em> Your client compares that measurement against the expected build. Software alone can't forge
+        it — the signature chain roots in the hardware.</div>
+      </details>
+      <details>
+        <summary><span class="qn">Q·02</span>What happens when a backend can't produce an attestation?
+          <span class="plus" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="a">Then WeAI never pretends otherwise. Every provider carries an explicit trust class in
+        the UI — <em>local</em>, <em>friend mesh</em>, <em>attested (TEE)</em>, <em>web3</em>, or <em>policy-trust
+        aggregator</em> — so an unverifiable endpoint is visibly labeled as one. The “no proof, no plaintext”
+        rule applies to the attested class; for everything else you decide with open eyes, and local
+        inference is always one click away.</div>
+      </details>
+      <details>
+        <summary><span class="qn">Q·03</span>Can WeAI itself read my prompts?
+          <span class="plus" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="a">No — structurally. WeAI is a client that runs on your Mac; there is no WeAI server in
+        the request path. Prompts go from your machine directly to the backend you chose: your own GPU, a
+        friend's node over an end-to-end encrypted channel, or an attested enclave. Keys live in your macOS
+        Keychain and in the enclave — never with us. We couldn't build a log of your conversations if we
+        tried, and that's the point.</div>
+      </details>
+      <details>
+        <summary><span class="qn">Q·04</span>Is it quantum-safe?
+          <span class="plus" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="a">The friend-mesh SecureChannel uses a hybrid X-Wing key exchange — X25519 <em>plus</em>
+        ML-KEM-768 — so a session recorded today stays secret unless both elliptic-curve and lattice
+        cryptography fall. That defeats “harvest now, decrypt later.” Only vetted, standardized primitives
+        via Apple CryptoKit; no custom crypto anywhere.</div>
+      </details>
+      <details>
+        <summary><span class="qn">Q·05</span>How is this different from just using Tinfoil directly?
+          <span class="plus" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="a">Tinfoil is one excellent backend; WeAI is the native client above <em>all</em> of them.
+        You get attested cloud enclaves when you need frontier scale, your own hardware when you don't, a
+        post-quantum friend mesh in between, and web3 markets when you want no single company in the loop —
+        one app, one API (<code>127.0.0.1:4380/v1</code>), with the trust level of every route labeled.</div>
+      </details>
+      <details>
+        <summary><span class="qn">Q·06</span>Is this production-ready?
+          <span class="plus" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="a">It's an experimental preview, and we document it like one: the
+        <a href="docs.html">architecture &amp; threat-model pages</a> label every single claim as
+        <em>implemented</em> or <em>planned</em> — including what is <em>not</em> secured yet. We'd rather
+        earn trust the same way the protocol does: by being checkable.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot-in">
+      <div class="foot-brand">
+        <span class="row">
+          <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M16 3l10 5v8c0 6.5-4.3 10.9-10 13C10.3 26.9 6 22.5 6 16V8l10-5z" stroke="currentColor" stroke-width="2"/>
+            <path d="M11.5 15.5l3 3 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          WeAI
+        </span>
+        <p>Verifiable private inference for macOS. Hardware attestation before plaintext,
+        keys sealed in enclaves, local models and a post-quantum friend mesh — privacy you can
+        check, not just believe.</p>
+      </div>
+      <div class="foot-links">
+        <div class="col">
+          <span class="h">Product</span>
+          <a href="#download">Download</a>
+          <a href="#backends">Backends</a>
+          <a href="#atrest">Your data at rest</a>
+          <a href="#compare">Compare</a>
+        </div>
+        <div class="col">
+          <span class="h">Verify</span>
+          <a href="docs.html">Architecture &amp; threat model</a>
+          <a href="#how">The handshake</a>
+          <a href="#proof">Policy vs. proof</a>
+        </div>
+        <div class="col">
+          <span class="h">Run it</span>
+          <a href="#faq">FAQ</a>
+          <a href="https://github.com/avantigroupai/WeAI-releases/releases/latest/download/WeAI.dmg">WeAI.dmg</a>
+        </div>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>© <span id="yr">2026</span> WeAI — experimental preview. Every claim in the docs is labeled implemented vs. planned.</span>
+      <span>verified · sealed · state of the art</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ================= ATTESTATION DOSSIER LIGHTBOX ================= -->
+<dialog class="lb" id="dossier" aria-labelledby="dossier-t">
+  <div class="lb-in">
+    <div class="lb-head">
+      <div>
+        <span class="lb-k">ATTESTATION DOSSIER · EXAMPLE SESSION</span>
+        <h3 id="dossier-t">Sealed &amp; verified — the full story</h3>
+        <p class="lb-sub">weai · 0G attested node · swiss-ai/apertus-70b · AMD SEV-SNP + H100 CC</p>
+      </div>
+      <button class="lb-x" id="dossier-x" type="button" aria-label="Close dialog">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <div class="lb-grid">
+      <div class="lb-row"><span class="k">Backend</span><span class="v">0G · marketplace of independent GPU providers, each in a TEE</span></div>
+      <div class="lb-row"><span class="k">Model</span><span class="v">swiss-ai/apertus-70b — open weights, so any node can serve it</span></div>
+      <div class="lb-row"><span class="k">Enclave</span><span class="v">AMD SEV-SNP · NVIDIA H100 confidential-computing mode</span></div>
+      <div class="lb-row"><span class="k">Channel</span><span class="v">X25519 → HKDF-SHA256 → ChaCha20-Poly1305</span></div>
+      <div class="lb-row"><span class="k">Verified</span><span class="v ok">client-side, before any plaintext left this Mac</span></div>
+      <div class="lb-row"><span class="k">Retention</span><span class="v ok">zero — by construction, not by policy</span></div>
+    </div>
+
+    <section class="lb-sec" aria-label="Key exchange">
+      <p class="t">§ A · The 0G key exchange</p>
+      <ol class="lb-steps">
+        <li><b>01</b><span>The 0G node boots the open inference stack inside an enclave; SEV-SNP measures every byte of it.</span></li>
+        <li><b>02</b><span>Inside that boundary the enclave generates an ephemeral <code>X25519</code> keypair — the private half physically cannot leave.</span></li>
+        <li><b>03</b><span>The public half is bound into the attestation report, signed by the silicon itself (<code>VCEK → ASK → ARK</code>, rooted in AMD).</span></li>
+        <li><b>04</b><span>WeAI verifies the signature chain and checks the measurement against the expected open build — a mismatch kills the connection here.</span></li>
+        <li><b>05</b><span>Only then: ECDH over <code>X25519</code>, keys derived via <code>HKDF-SHA256</code>, one <code>ChaCha20-Poly1305</code> key per direction.</span></li>
+        <li><b>06</b><span>Custody: your Mac's memory and the enclave's memory. Never on disk, never in a log — and never with the 0G node operator, who relays ciphertext only.</span></li>
+      </ol>
+    </section>
+
+    <section class="lb-sec" aria-label="How inference ran">
+      <p class="t">§ B · How the inference ran</p>
+      <ol class="lb-steps">
+        <li><b>01</b><span>Your prompt was encrypted on this Mac and sent as sealed frames — each one AEAD-authenticated and sequence-bound, so nothing can be replayed or reordered.</span></li>
+        <li><b>02</b><span>Decryption happened only past the attested boundary; the H100 ran in confidential-computing mode with encrypted GPU memory.</span></li>
+        <li><b>03</b><span><code>apertus-70b</code> generated the answer in place; tokens streamed back through the same sealed channel, encrypted before they left the enclave.</span></li>
+        <li><b>04</b><span>On session close both sides dropped their keys — traffic recorded on the wire today stays ciphertext.</span></li>
+        <li><b>05</b><span>Nothing persisted: no plaintext at rest, no prompt logs, nothing for an operator, acquirer or subpoena to read.</span></li>
+      </ol>
+    </section>
+
+    <p class="lb-note">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v5m0 3v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Illustrative protocol transcript, not a record of a real session — it shows the mechanism WeAI enforces.
+      0G's own curated catalogue today centres on models like DeepSeek&nbsp;v3, Qwen3.6 and GLM-5; Apertus is open-weights
+      and reaches you via Swisscom, the Public&nbsp;AI network, Hugging&nbsp;Face or your own hardware. Every claim is labeled
+      <em>implemented</em> vs <em>planned</em> in the <a href="docs.html">architecture &amp; threat model</a>.</span>
+    </p>
+  </div>
+</dialog>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="stamp-rough" x="-6%" y="-16%" width="112%" height="132%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.06" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/>
+    </filter>
+  </defs>
+</svg>
+
+<script>
+(function(){
+  "use strict";
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* year */
+  document.getElementById("yr").textContent = new Date().getFullYear();
+
+  /* reveal on scroll */
+  var revealEls = document.querySelectorAll(".reveal");
+  if (!reduced && "IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      });
+    }, {threshold:.12, rootMargin:"0px 0px -40px 0px"});
+    revealEls.forEach(function(el){ io.observe(el); });
+  } else {
+    revealEls.forEach(function(el){ el.classList.add("in"); });
+  }
+
+  /* attestation terminal animation */
+  var term = document.getElementById("term");
+  var target = document.getElementById("type-target");
+  var caret = document.getElementById("caret");
+  var stamp = document.getElementById("stamp");
+  if (term && !reduced && "IntersectionObserver" in window) {
+    var cmd = target.textContent;
+    var lines = term.querySelectorAll(".t-hide");
+    var played = false;
+    term.classList.add("anim");
+    target.textContent = "";
+
+    /* wall-clock driven so browser timer throttling can't stall the handshake */
+    var TYPE_MS = 900, PAUSE_MS = 350, LINE_MS = 270;
+    function play(){
+      var t0 = null;
+      function frame(ts){
+        if (t0 === null) t0 = ts;
+        var el = ts - t0;
+        var chars = Math.min(cmd.length, Math.round(el / TYPE_MS * cmd.length));
+        target.textContent = cmd.slice(0, chars);
+        var shown = Math.floor((el - TYPE_MS - PAUSE_MS) / LINE_MS);
+        for (var i = 0; i < lines.length && i < shown; i++) {
+          if (lines[i].style.visibility !== "visible") {
+            lines[i].style.visibility = "visible";
+            if (lines[i] === stamp) {
+              stamp.classList.add("in"); caret.style.display = "none";
+              var live = term.querySelector(".live");
+              if (live) { live.innerHTML = "<b></b>SEALED"; live.classList.add("sealed"); }
+            }
+          }
+        }
+        if (chars < cmd.length || shown < lines.length) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    var tio = new IntersectionObserver(function(entries){
+      if (played || !entries[0].isIntersecting) return;
+      played = true; tio.disconnect(); play();
+    }, {threshold:.2});
+    tio.observe(term);
+  }
+
+  /* attestation dossier lightbox — ESC is native to <dialog>, backdrop click closes */
+  var dossier = document.getElementById("dossier");
+  var dossierX = document.getElementById("dossier-x");
+  if (stamp && dossier && dossier.showModal) {
+    /* No body scroll-lock: some engines never fire dialog close/cancel, which would
+       leave the page permanently unscrollable. A modal dialog already blocks the page. */
+    function shut(){
+      if (dossier.open) dossier.close();
+      stamp.focus({preventScroll: true});
+    }
+    stamp.addEventListener("click", function(){ dossier.showModal(); });
+    dossierX.addEventListener("click", shut);
+    dossier.addEventListener("click", function(e){
+      if (e.target === dossier) shut();   /* backdrop only — panel clicks stay open */
+    });
+    /* explicit Escape: native <dialog> handles it, but not every engine does it reliably */
+    dossier.addEventListener("keydown", function(e){
+      if (e.key === "Escape" || e.keyCode === 27) { e.preventDefault(); shut(); }
+    });
+  }
+
+  /* copy hash */
+  var btn = document.getElementById("copyhash");
+  var hash = document.getElementById("hashval");
+  if (btn) {
+    btn.addEventListener("click", function(){
+      function ok(){
+        btn.classList.add("done");
+        btn.lastChild.textContent = " copied";
+        setTimeout(function(){ btn.classList.remove("done"); btn.lastChild.textContent = " copy"; }, 1800);
+      }
+      function fallback(){
+        var r = document.createRange(); r.selectNodeContents(hash);
+        var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(hash.textContent.trim()).then(ok, fallback);
+      } else { fallback(); }
+    });
+  }
+})();
+</script>
+</body>
+</html>

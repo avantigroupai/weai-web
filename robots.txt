@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://avantigroupai.github.io/weai-web/sitemap.xml
