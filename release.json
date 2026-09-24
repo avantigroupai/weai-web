@@ -1,13 +1,13 @@
 {
   "product": "WeAI",
-  "version": "0.1.10",
-  "build": 36,
+  "version": "0.1.11",
+  "build": 40,
   "date": "2026-09-24",
   "minOS": "14.0",
   "arch": "arm64",
   "dmg": "https://github.com/avantigroupai/WeAI-releases/releases/latest/download/WeAI.dmg",
-  "versionedDmg": "https://github.com/avantigroupai/WeAI-releases/releases/download/v0.1.10/WeAI-0.1.10.dmg",
-  "sha256": "868ff6820299a353585afd508b6834824dfd85d07e2dc2b0eae130186ec6e114",
+  "versionedDmg": "https://github.com/avantigroupai/WeAI-releases/releases/download/v0.1.11/WeAI-0.1.11.dmg",
+  "sha256": "3671c8f1ee8c426608644d15c1a535aabf2c3d413bbc6d456c31b86172202bab",
   "sizeMB": 23.6,
   "notarized": true
 }
